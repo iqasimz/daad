@@ -1,0 +1,35 @@
+{
+  "name": "daad",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iqasimz/daad.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/iqasimz/daad/issues"
+  },
+  "homepage": "https://github.com/iqasimz/daad#readme",
+  "devDependencies": {
+    "vite": "^7.1.11"
+  },
+  "scripts": {
+    "dev": "vite --open",
+    "dev:api": "node server.mjs",
+    "dev:all": "bash -c 'node server.mjs & vite --open'",
+    "build": "vite build",
+    "preview": "vite preview --open",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0"
+  }
+}

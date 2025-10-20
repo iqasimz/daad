@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scholarships for Pakistani Students</title>
+<style>
+  /* Reset and base */
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #121212;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Sticky header */
+  header {
+    position: sticky;
+    top: 0;
+    background-color: #1e1e1e;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    z-index: 10;
+  }
+  header h1 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: #fff;
+  }
+  /* Main content area */
+  main {
+    flex-grow: 1;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  /* Results grid */
+  #results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+    gap: 1.5rem;
+  }
+  /* Scholarship card */
+  .scholarship-card {
+    background-color: #222;
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem 2rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 8px rgb(0 0 0 / 0.7);
+    transition: box-shadow 0.3s ease;
+  }
+  .scholarship-card:hover,
+  .scholarship-card:focus-within {
+    box-shadow: 0 6px 12px rgb(0 0 0 / 0.9);
+  }
+  .scholarship-card h2 {
+    margin: 0 0 0.5rem 0;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #f0f0f0;
+  }
+  .scholarship-card p.country {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #bbb;
+    margin: 0 0 1rem 0;
+  }
+  /* Chips container */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  /* Individual chip */
+  .chip {
+    background-color: #444;
+    color: #ddd;
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    user-select: none;
+  }
+  /* Coverage and steps container */
+  .details-section {
+    margin-bottom: 1rem;
+  }
+  .details-section p {
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    font-size: 0.95rem;
+    color: #ccc;
+  }
+  .details-section ul,
+  .details-section ol {
+    margin: 0 0 0 1.25rem;
+    padding: 0;
+    color: #ddd;
+    font-size: 0.9rem;
+  }
+  .details-section ul li,
+  .details-section ol li {
+    margin-bottom: 0.3rem;
+  }
+  /* Links container */
+  .links {
+    margin-top: auto;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .link-button {
+    background-color: #0a84ff;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+  }
+  .link-button:hover,
+  .link-button:focus {
+    background-color: #006edc;
+    outline: none;
+  }
+  /* Error message */
+  #error-message {
+    margin-top: 2rem;
+    color: #ff4c4c;
+    font-weight: 700;
+    text-align: center;
+  }
+  /* Loading text */
+  #loading-text {
+    text-align: center;
+    color: #888;
+    font-size: 1rem;
+  }
+</style>
+</head>
+<body>
+<header role="banner">
+  <h1>Scholarships for Pakistani Students</h1>
+</header>
+<main>
+  <p id="count" style="margin:0 0 1rem 0;color:#aaa;"></p>
+  <div id="results" aria-live="polite" aria-atomic="true"></div>
+  <div id="pager" class="row" style="display:flex;gap:1rem;align-items:center;justify-content:center;margin-top:1.25rem;"></div>
+  <div id="error-message" role="alert" aria-live="assertive"></div>
+</main>
+<script>
+  // Helpers similar to catalogue.html
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
+  function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+  function getParams(){ return new URLSearchParams(location.search); }
+  function setParams(obj, replace=true){
+    const p = getParams();
+    Object.entries(obj).forEach(([k,v]) => { if(v===undefined||v===null||v==='') p.delete(k); else p.set(k, String(v)); });
+    const url = `${location.pathname}?${p.toString()}`;
+    replace ? history.replaceState(null,'',url) : history.pushState(null,'',url);
+  }
+
+  async function fetchScholarships({ page=1, pageSize=20 }){
+    const url = new URL('/api/scholarships', window.location.origin);
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('pageSize', String(pageSize));
+    const resp = await fetch(url.toString());
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    return resp.json(); // { data, total, page, pageSize }
+  }
+
+  const container = $('#results');
+  const errorDiv = $('#error-message');
+  const countEl = $('#count');
+  const pagerEl = $('#pager');
+
+  let LAST = { total: 0, page: 1, pageSize: 20 };
+
+  function renderCards(scholarships){
+    container.innerHTML = '';
+    if (!scholarships || scholarships.length === 0) {
+      container.textContent = 'No scholarships found.';
+      return;
+    }
+    scholarships.forEach(scholarship => {
+      const card = document.createElement('article');
+      card.className = 'scholarship-card';
+      card.tabIndex = 0;
+      card.setAttribute('aria-label', scholarship.name || scholarship.title || 'Scholarship card');
+
+      const getField = (obj, keys, def = 'N/A') => {
+        for (const k of keys) {
+          if (obj && typeof obj === 'object' && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') {
+            return Array.isArray(obj[k]) ? obj[k] : String(obj[k]).trim();
+          }
+        }
+        return def;
+      };
+
+      const title = document.createElement('h2');
+      title.textContent = getField(scholarship, ['name','title'], 'Unnamed Scholarship');
+      card.appendChild(title);
+
+      const countryVal = getField(scholarship, ['country_region','countryRegion','country']);
+      const country = document.createElement('p');
+      country.className = 'country';
+      country.textContent = 'Country/Region: ' + countryVal;
+      card.appendChild(country);
+
+      const degreesRaw = getField(scholarship, ['degree_levels','degreeLevels'], []);
+      const degreesArr = Array.isArray(degreesRaw) ? degreesRaw : (typeof degreesRaw === 'string' && degreesRaw ? [degreesRaw] : []);
+      if (degreesArr.length > 0) {
+        const degreesContainer = document.createElement('div');
+        degreesContainer.className = 'chips';
+        degreesArr.forEach(degree => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = String(degree).trim();
+          degreesContainer.appendChild(chip);
+        });
+        card.appendChild(degreesContainer);
+      }
+
+      const coverageRaw = getField(scholarship, ['coverage','benefits'], []);
+      const coverageArr = Array.isArray(coverageRaw) ? coverageRaw : (typeof coverageRaw === 'string' && coverageRaw ? [coverageRaw] : []);
+      if (coverageArr.length > 0) {
+        const coverageSection = document.createElement('section');
+        coverageSection.className = 'details-section';
+        const coverageTitle = document.createElement('p');
+        coverageTitle.textContent = 'Coverage:';
+        coverageSection.appendChild(coverageTitle);
+        const coverageChips = document.createElement('div');
+        coverageChips.className = 'chips';
+        coverageArr.forEach(item => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = String(item).trim();
+          coverageChips.appendChild(chip);
+        });
+        coverageSection.appendChild(coverageChips);
+        card.appendChild(coverageSection);
+      }
+
+      const stepsArr = Array.isArray(scholarship.steps) ? scholarship.steps : [];
+      if (stepsArr.length > 0) {
+        const stepsSection = document.createElement('section');
+        stepsSection.className = 'details-section';
+        const stepsTitle = document.createElement('p');
+        stepsTitle.textContent = 'Application Steps:';
+        stepsSection.appendChild(stepsTitle);
+        const stepsListEl = document.createElement('ol');
+        stepsListEl.style.marginTop = '0.25rem';
+        stepsArr.forEach(step => {
+          const li = document.createElement('li');
+          li.textContent = String(step).trim();
+          stepsListEl.appendChild(li);
+        });
+        stepsSection.appendChild(stepsListEl);
+        card.appendChild(stepsSection);
+      }
+
+      const linksContainer = document.createElement('div');
+      linksContainer.className = 'links';
+      const url = getField(scholarship, ['official_url','apply_through','url'], '');
+      if (typeof url === 'string' && url.trim() !== '') {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'link-button';
+        link.textContent = 'Official Page';
+        linksContainer.appendChild(link);
+      } else if (Array.isArray(url) && url.length > 0 && String(url[0]).trim() !== '') {
+        const link = document.createElement('a');
+        link.href = String(url[0]).trim();
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'link-button';
+        link.textContent = 'Official Page';
+        linksContainer.appendChild(link);
+      }
+      if (linksContainer.children.length > 0) {
+        card.appendChild(linksContainer);
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+  function renderPager(total, page, pageSize){
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    pagerEl.innerHTML = `
+      <button ${page<=1?'disabled':''} id="prev">Prev</button>
+      <span class="badge">Page ${page} / ${totalPages}</span>
+      <button ${page>=totalPages?'disabled':''} id="next">Next</button>
+    `;
+    const prev = document.getElementById('prev');
+    const next = document.getElementById('next');
+    if (prev) prev.onclick = () => { if (page>1) searchAndRender(page-1, false); };
+    if (next) next.onclick = () => { if (page<totalPages) searchAndRender(page+1, false); };
+  }
+
+  async function searchAndRender(page=1, push=true){
+    errorDiv.textContent = '';
+    try{
+      const res = await fetchScholarships({ page, pageSize: LAST.pageSize });
+      LAST = res;
+      countEl.textContent = `${res.total} results`;
+      renderCards(res.data);
+      renderPager(res.total, res.page, res.pageSize);
+      const params = { page:res.page };
+      setParams(params, !push ? false : true);
+    }catch(err){
+      console.error(err);
+      errorDiv.textContent = 'Failed to load scholarships.';
+      container.innerHTML = '';
+      countEl.textContent = '';
+      pagerEl.innerHTML = '';
+    }
+  }
+
+  // hydrate from URL and bind events
+  (function init(){
+    const p = getParams();
+    const page = Math.max(1, parseInt(p.get('page')||'1',10));
+    searchAndRender(page, false);
+  })();
+</script>
+</body>
+</html>
