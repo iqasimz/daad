@@ -4,15 +4,11 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 // Security headers, CORS, and body limits
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'same-site' }
-}));
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
 app.use(cors({ origin: ALLOWED_ORIGIN, methods: ['GET','POST'] }));
 app.use(express.json({ limit: '200kb' }));
