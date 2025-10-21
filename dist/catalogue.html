@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StudyAbroad PK</title>
+  <style>
+    :root{--bg:#0b0c10;--fg:#e8e8e8;--muted:#a7a7a7;--card:#15171c;--accent:#4cc9f0}
+    html,body{height:100%;margin:0;padding:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,var(--bg),rgba(11,12,16,.85));backdrop-filter:saturate(1.2) blur(6px);border-bottom:1px solid #222}
+    .wrap{max-width:900px;margin:0 auto;padding:16px}
+    h1{font-size:22px;margin:0 0 10px 0;letter-spacing:0.3px}
+    p{margin:0 0 10px 0;color:#c9c9c9;font-size:15px}
+    nav{display:flex;gap:14px;flex-wrap:wrap;padding:14px 0;justify-content:center;border-bottom:1px solid #1e1e1e;background:var(--card)}
+    nav a{color:var(--accent);text-decoration:none;font-weight:500}
+    nav a:hover{text-decoration:underline}
+    main{max-width:800px;margin:60px auto;text-align:center;padding:0 20px}
+    .cta{display:inline-block;margin-top:16px;padding:10px 18px;background:var(--accent);color:#000;border-radius:8px;font-weight:600;text-decoration:none}
+    .cta:hover{opacity:0.85}
+    footer{margin-top:60px;padding:20px 0;text-align:center;color:var(--muted);font-size:13px;border-top:1px solid #1e1e1e}
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="./index.html">Home</a>
+      <a href="./catalogue.html">Course Finder</a>
+      <a href="./scholar.html">Scholarships Guide</a>
+      <a href="./book.html">Book a Free Appointment</a>
+    </nav>
+  </header>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Course Finder (Multi-Country)</title>
+  <style>
+    :root{--bg:#0b0c10;--fg:#e8e8e8;--muted:#a7a7a7;--card:#15171c;--accent:#4cc9f0}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,var(--bg),rgba(11,12,16,.85));backdrop-filter:saturate(1.2) blur(6px);border-bottom:1px solid #222}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    h1{margin:0;font-size:18px;letter-spacing:.3px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+    input[type="text"],select{flex:1;min-width:240px;padding:10px 12px;border-radius:10px;border:1px solid #2a2d34;background:#0f1116;color:var(--fg);outline:none}
+    select{cursor:pointer}
+    .badge{font-size:12px;color:var(--muted)}
+    main .wrap{padding-top:10px}
+    #results{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:12px}
+    .card{background:var(--card);border:1px solid #1f2230;border-radius:14px;padding:14px;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+    .title{font-weight:700;margin-bottom:6px}
+    .meta{font-size:13px;color:var(--muted)}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .chip{font-size:12px;padding:3px 8px;border-radius:999px;background:#0f1220;border:1px solid #262a3a;color:#cfd3ff}
+    .links{margin-top:8px;display:flex;gap:10px;flex-wrap:wrap}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .empty{padding:24px;text-align:center;color:var(--muted)}
+    .desc{margin-top:10px;color:#c9c9c9;font-size:13px}
+    mark{background:transparent;color:#fff;padding:0}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Course Finder (Multi-Country)</h1>
+      <div class="row">
+        <select id="country">
+          <option value="germany">Germany (DAAD)</option>
+          <option value="netherlands">Netherlands</option>
+          <option value="sweden">Sweden</option>
+          <option value="finland">Finland</option>
+        </select>
+        <input id="q" type="text" placeholder="Search by course name…" />
+      </div>
+      <div class="row"><span class="badge" id="meta">Loading data…</span></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div id="results" aria-live="polite"></div>
+      <div id="empty" class="empty">Start typing to filter by programme title.</div>
+    </div>
+  </main>
+
+  <script>
+  const $ = s => document.querySelector(s);
+  const countryEl = $('#country');
+  const qEl = $('#q');
+  const metaEl = $('#meta');
+  const resultsEl = $('#results');
+  const emptyEl = $('#empty');
+  
+  let CURRENT_COUNTRY = 'germany';
+
+  const COUNTRY_CONFIG = {
+    germany:     { key: 'germany', name: 'Germany (DAAD)' },
+    netherlands: { key: 'netherlands', name: 'Netherlands' },
+    sweden:      { key: 'sweden', name: 'Sweden' },
+    finland:     { key: 'finland', name: 'Finland' }
+  };
+
+  async function loadCountry(country){
+    CURRENT_COUNTRY = country;
+    qEl.value = (qEl.value || '');
+    await searchAndRender();
+  }
+
+  // API helpers for new backend
+  async function fetchCourses({ country, q, page = 1, pageSize = 20 }) {
+    const url = new URL('/api/courses', window.location.origin);
+    if (country) url.searchParams.set('country', country);
+    if (q) url.searchParams.set('q', q);
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('pageSize', String(pageSize));
+    const resp = await fetch(url.toString());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json(); // { data, total, page, pageSize }
+  }
+
+  let LAST_RESULT = { data: [], total: 0, page: 1, pageSize: 20 };
+  async function searchAndRender(page = 1){
+    const country = CURRENT_COUNTRY;
+    const q = (qEl.value || '').trim();
+    metaEl.textContent = `Searching ${COUNTRY_CONFIG[country].name}…`;
+    try {
+      const res = await fetchCourses({ country, q, page, pageSize: LAST_RESULT.pageSize });
+      LAST_RESULT = res;
+      metaEl.textContent = `Found ${res.total.toLocaleString()} programmes in ${COUNTRY_CONFIG[country].name}. Showing ${res.data.length} results.`;
+      render(res.data, q);
+      renderPager(res.total, res.page, res.pageSize);
+    } catch (err) {
+      console.error(err);
+      metaEl.textContent = 'Failed to load results.';
+      resultsEl.innerHTML = '';
+      emptyEl.style.display = '';
+      emptyEl.textContent = 'Could not load results. Please try again.';
+    }
+  }
+
+  function renderPager(total, page, pageSize){
+    let pager = document.getElementById('pager');
+    if (!pager) {
+      pager = document.createElement('div');
+      pager.id = 'pager';
+      pager.className = 'row';
+      resultsEl.parentElement.appendChild(pager);
+    }
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    pager.innerHTML = `
+      <button ${page<=1?'disabled':''} id="prev">Prev</button>
+      <span class="badge">Page ${page} / ${totalPages}</span>
+      <button ${page>=totalPages?'disabled':''} id="next">Next</button>
+    `;
+    const prev = document.getElementById('prev');
+    const next = document.getElementById('next');
+    if (prev) prev.onclick = () => { if (page>1) searchAndRender(page-1); };
+    if (next) next.onclick = () => { if (page<totalPages) searchAndRender(page+1); };
+  }
+
+  countryEl.addEventListener('change', ()=>{ loadCountry(countryEl.value); });
+  qEl.addEventListener('input', debounce(()=>{ searchAndRender(1); }, 200));
+
+
+  function getTitle(p){
+    if(CURRENT_COUNTRY === 'germany'){
+      return cleanTitle(p.programme_title || p.title || '');
+    } else if(CURRENT_COUNTRY === 'netherlands'){
+      return p.name || p.title || p.programTitle || '';
+    } else if(CURRENT_COUNTRY === 'sweden'){
+      return cleanTitle(p.title || p.programme_title || p.header_line || '');
+    } else if(CURRENT_COUNTRY === 'finland'){
+      return cleanTitle(p.title || p.detail?.nimi?.en || p.detail?.nimi?.fi || '');
+    }
+    return '';
+  }
+
+  function render(rows, q){
+    resultsEl.innerHTML='';
+    if(!rows || !rows.length){ 
+      emptyEl.style.display=''; 
+      emptyEl.textContent='No matches for this query.'; 
+      return; 
+    }
+    emptyEl.style.display='none';
+    const frag = document.createDocumentFragment();
+    for(const p of rows) frag.appendChild(card(p, q));
+    resultsEl.appendChild(frag);
+  }
+
+  function card(p, q){
+    if(CURRENT_COUNTRY === 'germany') return cardGermany(p, q);
+    if(CURRENT_COUNTRY === 'netherlands') return cardNetherlands(p, q);
+    if(CURRENT_COUNTRY === 'sweden') return cardSweden(p, q);
+    if(CURRENT_COUNTRY === 'finland') return cardFinland(p, q);
+  }
+
+  // GERMANY CARD
+  function cardGermany(p, q){
+    const div = document.createElement('div');
+    div.className = 'card';
+
+    const title = getTitle(p) || '—';
+    const uni = p.university || '';
+    const city = p.city || '';
+    const degree = p.degree || '';
+    const lang = p.teaching_language || '';
+    const duration = p.duration || '';
+    const start = p.start || '';
+    const fee = p.tuition_fees_eur || '';
+    const deadline = p.application_deadline || '';
+    const detail = p.detail_url || '';
+
+    const content = (p.overview || p.content || '').toString().trim();
+    const preview = content ? truncate(stripTags(content), 220) : '';
+
+    div.innerHTML = `
+      <div class="title">${highlight(title, q)}</div>
+      <div class="meta">${escapeHtml(uni)}${city? ' · '+escapeHtml(city):''}</div>
+      <div class="chips">
+        ${degree? `<span class="chip">${escapeHtml(degree)}</span>`:''}
+        ${lang? `<span class="chip">${escapeHtml(lang)}</span>`:''}
+        ${duration? `<span class="chip">${escapeHtml(duration)}</span>`:''}
+        ${start? `<span class="chip">${escapeHtml(start)}</span>`:''}
+        ${fee? `<span class="chip">Fees: ${escapeHtml(fee)}</span>`:''}
+      </div>
+      ${preview? `<div class="desc">${escapeHtml(preview)}</div>`:''}
+      <div class="links" style="margin-top:8px">
+        ${isUrl(deadline)? `<a href="${deadline}" target="_blank" rel="noopener">Deadlines</a>`:''}
+        ${isUrl(detail)? `<a href="${detail}" target="_blank" rel="noopener">DAAD Detail</a>`:''}
+      </div>
+    `;
+    return div;
+  }
+
+  // NETHERLANDS CARD
+  function cardNetherlands(p, query){
+    const div = document.createElement('div');
+    div.className = 'card';
+
+    const title = getTitle(p) || '—';
+    const inst = (p.institution && (p.institution.name || p.institution.title)) || '';
+    const city = first(p.locations)?.name || first(p.locations)?.city || '';
+    const degree = p.qualification || p.degree || p.type || '';
+    const duration = p.duration || '';
+    const languages = (Array.isArray(p.languages) ? p.languages.map(x => x?.name || x).filter(Boolean) : []).join(', ');
+
+    const nlPage = p.slug ? `https://www.studyinnl.org/programs/${encodeURIComponent(p.slug)}` : '';
+    const site = p.website || p.url || '';
+    const admission = Array.isArray(p.admission_url) ? p.admission_url[0] : '';
+
+    const tuis = (Array.isArray(p.tuitions) ? p.tuitions : []).filter(t => t && (t.amount!=null));
+    const intl = tuis.filter(t => /international/i.test(String(t.tuition_fee_type)));
+    const intlMin = intl.length ? Math.min(...intl.map(t => +t.amount || 0)) : null;
+
+    const titleHTML = highlight(title, query);
+
+    div.innerHTML = `
+      <div class="title">${titleHTML}</div>
+      <div class="meta">${inst ? inst : ''}${city ? (inst ? ' · ' : '') + city : ''}</div>
+      <div class="chips">
+        ${degree ? `<span class="chip">${escapeHtml(degree)}</span>` : ''}
+        ${duration ? `<span class="chip">${escapeHtml(duration)}</span>` : ''}
+        ${languages ? `<span class="chip">${escapeHtml(languages)}</span>` : ''}
+        ${intlMin!=null ? `<span class="chip">Intl from €${Number(intlMin).toLocaleString()}</span>` : ''}
+      </div>
+      <div class="links">
+        ${site ? `<a href="${site}" target="_blank" rel="noopener">Website</a>` : ''}
+        ${admission ? `<a href="${admission}" target="_blank" rel="noopener">Admission</a>` : ''}
+      </div>
+    `;
+    return div;
+  }
+
+  // SWEDEN CARD
+  function cardSweden(p, query){
+    const div = document.createElement('div');
+    div.className = 'card';
+
+    const title = getTitle(p) || '—';
+    const { credits, university, city } = parseHeaderLine(p.header_line);
+
+    const level = p.Level || '';
+    const lang = p['Language of instruction'] || '';
+    const period = p.Period || '';
+    const teach = p['Teaching form'] || '';
+    const pace = p['Pace of study'] || '';
+    const time = p['Instructional time'] || '';
+
+    const tuition = p.tuition_block || '';
+    const link = p.external_link_url || '';
+    const linkText = p.external_link_text || 'About the course/programme';
+
+    const titleHTML = highlight(title, query);
+
+    div.innerHTML = `
+      <div class="title">${titleHTML}</div>
+      <div class="meta">${escapeHtml(university)}${city ? ' · ' + escapeHtml(city) : ''}${credits ? ' · ' + escapeHtml(credits) : ''}</div>
+      <div class="chips">
+        ${level ? `<span class="chip">${escapeHtml(level)}</span>` : ''}
+        ${lang ? `<span class="chip">${escapeHtml(lang)}</span>` : ''}
+        ${period ? `<span class="chip">${escapeHtml(period)}</span>` : ''}
+        ${teach ? `<span class="chip">${escapeHtml(teach)}</span>` : ''}
+        ${pace ? `<span class="chip">${escapeHtml(pace)}</span>` : ''}
+        ${time ? `<span class="chip">${escapeHtml(time)}</span>` : ''}
+      </div>
+      ${tuition ? `<div class="meta" style="margin-top:8px;">${escapeHtml(tuition)}</div>` : ''}
+      <div class="links">
+        ${link ? `<a href="${link}" target="_blank" rel="noopener">${escapeHtml(linkText)}</a>` : ''}
+      </div>
+    `;
+    return div;
+  }
+
+  // FINLAND CARD
+  function cardFinland(p, query){
+    const div = document.createElement('div');
+    div.className = 'card';
+
+    const title = getTitle(p);
+    const provider = getProviderFinland(p);
+    const city = getCityFinland(p);
+    const level = getLevelFinland(p);
+    const credits = getCreditsFinland(p);
+    const degreeNames = getDegreeNamesFinland(p);
+    const url = getUrlFinland(p);
+
+    const titleHTML = highlight(title, query);
+
+    div.innerHTML = `
+      <div class="title">${titleHTML}</div>
+      <div class="meta">${escapeHtml(provider)}${city ? ' · ' + escapeHtml(city) : ''}</div>
+      <div class="chips">
+        ${level ? `<span class="chip">${escapeHtml(level)}</span>` : ''}
+        ${credits ? `<span class="chip">${escapeHtml(credits)}</span>` : ''}
+        ${degreeNames ? `<span class="chip">${escapeHtml(degreeNames)}</span>` : ''}
+      </div>
+      <div class="links">
+        ${url ? `<a href="${url}" target="_blank" rel="noopener">View on Studyinfo</a>` : ''}
+      </div>
+    `;
+    return div;
+  }
+
+  // FINLAND HELPERS
+  function getProviderFinland(p){
+    const csvProv = p.provider || '';
+    const t0 = Array.isArray(p.detail?.tarjoajat) ? p.detail.tarjoajat[0] : null;
+    const name = t0?.nimi?.en || t0?.nimi?.fi || '';
+    return csvProv || name;
+  }
+  function getCityFinland(p){
+    const csvCity = p.city || '';
+    const t0 = Array.isArray(p.detail?.tarjoajat) ? p.detail.tarjoajat[0] : null;
+    const city = t0?.paikkakunta?.nimi?.en || t0?.paikkakunta?.nimi?.fi || '';
+    return csvCity || city;
+  }
+  function mapFiLevel(code, path){
+    const t = String(code||'').toLowerCase();
+    const pth = String(path||'').toLowerCase();
+    if (/\byo\b/.test(t) || /kk\/yo/.test(pth)) return 'University (academic)';
+    if (/\bamk\b/.test(t) || /kk\/amk/.test(pth)) return 'University of Applied Sciences (UAS)';
+    if (/\byamk\b/.test(t)) return "UAS Master's degree";
+    if (/\bamkkk\b/.test(t)) return "UAS Bachelor's degree";
+    if (/\bkk\b/.test(t)) return 'Higher education (generic)';
+    if (/\blukio\b/.test(t)) return 'Upper secondary school';
+    if (/\bpt\b/.test(t)) return 'Basic qualification';
+    return String(code||'');
+  }
+  function getLevelFinland(p){
+    const csv = p.level || '';
+    const dt = p.detail?.koulutustyyppi || p.detail?.koulutustyyppiPath || '';
+    const mappedCsv = mapFiLevel(csv, dt);
+    const mappedDt  = mapFiLevel(dt, dt);
+    return mappedCsv || mappedDt || '';
+  }
+  function getCreditsFinland(p){
+    const n = p.detail?.metadata?.opintojenLaajuusNumero;
+    const unit = p.detail?.metadata?.opintojenLaajuusyksikko?.nimi?.en || 'ECTS';
+    return (n!=null) ? `${n} ${unit}` : '';
+  }
+  function getDegreeNamesFinland(p){
+    const arr = p.detail?.metadata?.tutkintonimike || [];
+    if (!Array.isArray(arr) || !arr.length) return '';
+    return arr.map(x => x?.nimi?.en || x?.nimi?.fi || '').filter(Boolean).join(', ');
+  }
+  function getUrlFinland(p){
+    const oid = p.oid || p.detail?.oid;
+    if (oid) return `https://opintopolku.fi/konfo/en/koulutus/${encodeURIComponent(oid)}`;
+    if (p.detail_url) return p.detail_url;
+    return '';
+  }
+
+  // SWEDEN HELPERS
+  function parseHeaderLine(h){
+    h = String(h||'').replace(/\s+/g,' ').trim();
+    const out = { credits:'', university:'', city:'' };
+    if(!h) return out;
+    const parts = h.split(/,\s*/);
+    if(parts.length){
+      const p0 = parts[0];
+      if(/credits?/i.test(p0)) out.credits = p0;
+    }
+    if(parts.length>1){ out.university = parts[1]; }
+    if(parts.length>2){
+      const m = parts[2].match(/Location:\s*(.*)$/i);
+      out.city = m ? m[1] : parts[2];
+    }
+    return out;
+  }
+
+  // COMMON HELPERS
+  function cleanTitle(s){
+    s = String(s||'').trim();
+    if(!s) return s;
+    const m = s.match(/^(.+?):\s*(.+)$/);
+    if(m){
+      const A = m[1].trim();
+      const B = m[2].trim();
+      if(A.toLowerCase().includes(B.toLowerCase())) return A;
+    }
+    const words = s.split(/\s+/);
+    for(let k=Math.min(8, Math.floor(words.length/2)); k>=2; k--){
+      const suffix = words.slice(-k).join(' ');
+      const prefix = words.slice(0, -k).join(' ');
+      if(prefix.toLowerCase().includes(suffix.toLowerCase())){
+        return prefix.trim();
+      }
+    }
+    return s;
+  }
+  function first(arr){ return Array.isArray(arr) && arr.length ? arr[0] : null; }
+  function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+  function stripTags(s){ return String(s).replace(/<[^>]*>/g,''); }
+  function truncate(s,n){ return s.length>n? s.slice(0,n-1)+'…': s; }
+  function isUrl(s){ return /^https?:\/\//i.test(String(s||'')); }
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+  function highlight(text, q){ 
+    if(!text) return '';
+    if(!q) return escapeHtml(text); 
+    const rx=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'ig'); 
+    return escapeHtml(text).replace(rx, m=>`<mark>${escapeHtml(m)}</mark>`); 
+  }
+
+  // AUTO-LOAD GERMANY ON START
+  loadCountry('germany');
+  </script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Book an Appointment</title>
+  <style>
+    :root{--bg:#0b0c10;--fg:#e8e8e8;--muted:#a7a7a7;--card:#15171c;--accent:#4cc9f0}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,var(--bg),rgba(11,12,16,.85));backdrop-filter:saturate(1.2) blur(6px);border-bottom:1px solid #222}
+    nav{display:flex;gap:14px;flex-wrap:wrap;padding:14px 0;justify-content:center;background:var(--card);border-bottom:1px solid #1e1e1e}
+    nav a{color:var(--accent);text-decoration:none;font-weight:500}
+    nav a:hover{text-decoration:underline}
+    .wrap{max-width:900px;margin:0 auto;padding:16px}
+    h1{margin:8px 0 6px 0;font-size:20px;letter-spacing:.3px}
+    .muted{color:var(--muted)}
+    form{background:var(--card);border:1px solid #1f2230;border-radius:14px;padding:16px;margin-top:16px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+    label{display:block;font-size:12px;color:#bdbdbd;margin-bottom:6px}
+    input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a2d34;background:#0f1116;color:var(--fg);outline:none}
+    textarea{min-height:120px;resize:vertical}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#000;font-weight:700;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+    .help{font-size:12px;color:var(--muted);margin-top:4px}
+    .msg{margin-top:12px;font-size:14px}
+    .msg.ok{color:#8ef296}
+    .msg.err{color:#ff8c8c}
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="./index.html">Home</a>
+      <a href="./catalogue.html">Course Finder</a>
+      <a href="./scholar.html">Scholarships Guide</a>
+      <a href="./book.html">Book a Free Appointment</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <h1>Book a 1:1 Appointment</h1>
+      <p class="muted">We’ll review your preferences and send a confirmed slot. No login required.</p>
+
+      <form id="bookForm" novalidate>
+        <div class="grid">
+          <div>
+            <label for="name">Full name *</label>
+            <input id="name" name="name" autocomplete="name" required />
+          </div>
+          <div>
+            <label for="email">Email *</label>
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </div>
+          <div>
+            <label for="phone">WhatsApp / Phone (optional)</label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" />
+          </div>
+          <div>
+            <label for="tz">Your timezone</label>
+            <select id="tz" name="timezone"></select>
+            <div class="help">Auto-detected; you can change it.</div>
+          </div>
+          <div>
+            <label for="level">Study level</label>
+            <select id="level" name="level">
+              <option value="">Select</option>
+              <option value="BSc">BSc</option>
+              <option value="MSc">MSc</option>
+              <option value="PhD">PhD</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="intake">Target intake (MM-YYYY)</label>
+            <input id="intake" name="intake" placeholder="10-2026" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <label for="courses">Paste your chosen course links (optional)</label>
+          <textarea id="courses" name="courses" placeholder="One URL per line…"></textarea>
+        </div>
+
+        <div style="margin-top:12px">
+          <label for="notes">Anything else? (optional)</label>
+          <textarea id="notes" name="notes" placeholder="Brief context about your profile or questions…"></textarea>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <label class="row" style="gap:8px;align-items:center">
+            <input type="checkbox" id="consent" required />
+            <span>I agree to be contacted about this booking.</span>
+          </label>
+        </div>
+
+        <div class="row" style="margin-top:14px;justify-content:space-between">
+          <button class="btn" id="submitBtn" type="submit">Request appointment</button>
+          <span id="status" class="msg" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    // Populate timezone select and set default
+    const tzSel = document.getElementById('tz');
+    const timezones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [Intl.DateTimeFormat().resolvedOptions().timeZone];
+    (timezones || []).forEach(tz => {
+      const opt = document.createElement('option');
+      opt.value = tz; opt.textContent = tz; tzSel.appendChild(opt);
+    });
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (detected) tzSel.value = detected;
+
+    const form = document.getElementById('bookForm');
+    const statusEl = document.getElementById('status');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = '';
+
+      // Basic validation
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const consent = document.getElementById('consent').checked;
+      if (!name || !email || !consent) {
+        statusEl.textContent = 'Please fill required fields (name, email, consent).';
+        statusEl.className = 'msg err';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      statusEl.textContent = 'Submitting…';
+      statusEl.className = 'msg';
+
+      const payload = {
+        name,
+        email,
+        phone: document.getElementById('phone').value.trim(),
+        timezone: document.getElementById('tz').value,
+        level: document.getElementById('level').value,
+        intake: document.getElementById('intake').value.trim(),
+        length: 20,
+        courses: document.getElementById('courses').value.split(/\n+/).map(s=>s.trim()).filter(Boolean),
+        notes: document.getElementById('notes').value.trim(),
+        userAgent: navigator.userAgent,
+        submittedAt: new Date().toISOString()
+      };
+
+      try {
+        const resp = await fetch('/api/appointments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error('HTTP '+resp.status);
+        const data = await resp.json();
+        statusEl.textContent = data.message || 'Request received. Please check your email for next steps.';
+        statusEl.className = 'msg ok';
+        form.reset();
+        if (detected) tzSel.value = detected;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Could not submit booking. Please try again later.';
+        statusEl.className = 'msg err';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
