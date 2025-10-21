@@ -10,7 +10,6 @@ export default defineConfig({
         catalogue:resolve(__dirname, 'catalogue.html'),
         scholar:  resolve(__dirname, 'scholar.html'),
         book:     resolve(__dirname, 'book.html'),
-        contact:  resolve(__dirname, 'contact.html'),
       }
     }
   }
